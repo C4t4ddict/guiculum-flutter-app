@@ -346,7 +346,6 @@ class _CalendarGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cellWidth = (constraints.maxWidth - 24) / 7;
-        final barWidth = cellWidth - 6;
         final segments = curriculum == null ? const <Map<String, dynamic>>[] : PlannerService.buildCurriculumSegments(curriculum!);
         final overlays = <Widget>[];
 
@@ -373,7 +372,7 @@ class _CalendarGrid extends StatelessWidget {
             final endCol = segmentEnd % 7;
             final left = startCol * (cellWidth + 4) + 3;
             final width = ((endCol - startCol) + 1) * cellWidth + ((endCol - startCol) * 4) - 6;
-            final top = row * (cellHeight + rowGap) + 36;
+            final top = row * (cellHeight + rowGap) + 42;
             overlays.add(Positioned(
               left: left,
               top: top,
@@ -429,7 +428,6 @@ class _CalendarGrid extends StatelessWidget {
                       onTap: () => onSelectDay(day),
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        width: barWidth,
                         alignment: Alignment.topCenter,
                         child: Column(
                           children: [

@@ -243,108 +243,17 @@ class _PlannerCalendarPageState extends State<PlannerCalendarPage> {
               Container(
                 decoration: AppTheme.glassCard(),
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Row(
-                      children: [
-                        Expanded(child: Center(child: Text('SUN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0x99BA1A1A))))),
-                        Expanded(child: Center(child: Text('MON', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
-                        Expanded(child: Center(child: Text('TUE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
-                        Expanded(child: Center(child: Text('WED', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
-                        Expanded(child: Center(child: Text('THU', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
-                        Expanded(child: Center(child: Text('FRI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
-                        Expanded(child: Center(child: Text('SAT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0x990066FF))))),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    GridView.builder(
-                      itemCount: visibleDays.length,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, mainAxisSpacing: 10, crossAxisSpacing: 4, mainAxisExtent: 64),
-                      itemBuilder: (context, index) {
-                        final day = visibleDays[index];
-                        final selected = day.year == _selected.year && day.month == _selected.month && day.day == _selected.day;
-                        final inMonth = day.month == _displayMonth.month;
-                        final segment = selectedCurriculum == null ? null : PlannerService.findSegmentForDate(selectedCurriculum, day);
-                        final dayTodoCount = selectedCurriculumTodos.where((t) => _isSameDay(day, t['due_date'] as String?)).length;
-                        final segmentColor = segment == null ? null : Color(int.parse((segment['color'] ?? PlannerService.segmentPalette.first).toString()));
-                        return InkWell(
-                          onTap: () {
-                            setState(() => _selected = day);
-                            _showDayDetailSheet(day: day, curriculum: selectedCurriculum, todos: selectedCurriculumTodos);
-                          },
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      width: 34,
-                                      height: 34,
-                                      decoration: BoxDecoration(
-                                        color: selected ? const Color(0xFF0050CB) : Colors.transparent,
-                                        shape: BoxShape.circle,
-                                        boxShadow: selected ? const [BoxShadow(color: Color(0x330050CB), blurRadius: 18)] : null,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        '${day.day}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: selected ? Colors.white : (inMonth ? AppColors.lightText : AppColors.lightMuted.withValues(alpha: 0.3)),
-                                        ),
-                                      ),
-                                    ),
-                                    if (dayTodoCount > 0) ...[
-                                      const SizedBox(width: 4),
-                                      Container(
-                                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: selected ? Colors.white : const Color(0xFF006689),
-                                          borderRadius: BorderRadius.circular(999),
-                                        ),
-                                        child: Text(
-                                          '$dayTodoCount',
-                                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: selected ? const Color(0xFF006689) : Colors.white),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                if (segment != null)
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: segmentColor!.withValues(alpha: 0.16),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: segmentColor.withValues(alpha: 0.24)),
-                                    ),
-                                    child: Text(
-                                      _segmentLabel((segment['name'] ?? '-').toString()),
-                                      maxLines: 1,
-                                      textAlign: TextAlign.center,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: segmentColor),
-                                    ),
-                                  )
-                                else
-                                  const SizedBox(height: 18),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                child: _CalendarGrid(
+                  days: visibleDays,
+                  selected: _selected,
+                  displayMonth: _displayMonth,
+                  curriculum: selectedCurriculum,
+                  todos: selectedCurriculumTodos,
+                  onSelectDay: (day) {
+                    setState(() => _selected = day);
+                    _showDayDetailSheet(day: day, curriculum: selectedCurriculum, todos: selectedCurriculumTodos);
+                  },
+                  segmentLabel: _segmentLabel,
                 ),
               ),
               const SizedBox(height: 18),
@@ -407,6 +316,174 @@ class _PlannerCalendarPageState extends State<PlannerCalendarPage> {
           );
         },
       ),
+    );
+  }
+}
+
+class _CalendarGrid extends StatelessWidget {
+  final List<DateTime> days;
+  final DateTime selected;
+  final DateTime displayMonth;
+  final Map<String, dynamic>? curriculum;
+  final List<Map<String, dynamic>> todos;
+  final void Function(DateTime day) onSelectDay;
+  final String Function(String name) segmentLabel;
+
+  const _CalendarGrid({required this.days, required this.selected, required this.displayMonth, required this.curriculum, required this.todos, required this.onSelectDay, required this.segmentLabel});
+
+  bool _sameDay(DateTime day, String? ymd) {
+    if (ymd == null) return false;
+    final d = DateTime.tryParse(ymd);
+    if (d == null) return false;
+    return day.year == d.year && day.month == d.month && day.day == d.day;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const cellHeight = 58.0;
+    const rowGap = 10.0;
+    const labelHeight = 16.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cellWidth = (constraints.maxWidth - 24) / 7;
+        final barWidth = cellWidth - 6;
+        final segments = curriculum == null ? const <Map<String, dynamic>>[] : PlannerService.buildCurriculumSegments(curriculum!);
+        final overlays = <Widget>[];
+
+        for (final segment in segments) {
+          final color = Color(int.parse((segment['color'] ?? PlannerService.segmentPalette.first).toString()));
+          final start = DateTime.tryParse((segment['start_date'] ?? '').toString());
+          final end = DateTime.tryParse((segment['end_date'] ?? '').toString());
+          if (start == null || end == null) continue;
+
+          int? startIndex;
+          int? endIndex;
+          for (var i = 0; i < days.length; i++) {
+            if (days[i].year == start.year && days[i].month == start.month && days[i].day == start.day) startIndex = i;
+            if (days[i].year == end.year && days[i].month == end.month && days[i].day == end.day) endIndex = i;
+          }
+          if (startIndex == null || endIndex == null) continue;
+
+          var current = startIndex;
+          while (current <= endIndex) {
+            final row = current ~/ 7;
+            final rowEnd = (row * 7) + 6;
+            final segmentEnd = endIndex < rowEnd ? endIndex : rowEnd;
+            final startCol = current % 7;
+            final endCol = segmentEnd % 7;
+            final left = startCol * (cellWidth + 4) + 3;
+            final width = ((endCol - startCol) + 1) * cellWidth + ((endCol - startCol) * 4) - 6;
+            final top = row * (cellHeight + rowGap) + 36;
+            overlays.add(Positioned(
+              left: left,
+              top: top,
+              width: width,
+              child: Container(
+                height: labelHeight,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: color.withValues(alpha: 0.26)),
+                ),
+                child: Text(
+                  startCol == current % 7 ? segmentLabel((segment['name'] ?? '-').toString()) : '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color),
+                ),
+              ),
+            ));
+            current = segmentEnd + 1;
+          }
+        }
+
+        return Stack(
+          children: [
+            Column(
+              children: [
+                const Row(
+                  children: [
+                    Expanded(child: Center(child: Text('SUN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0x99BA1A1A))))),
+                    Expanded(child: Center(child: Text('MON', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
+                    Expanded(child: Center(child: Text('TUE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
+                    Expanded(child: Center(child: Text('WED', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
+                    Expanded(child: Center(child: Text('THU', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
+                    Expanded(child: Center(child: Text('FRI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.lightMuted)))),
+                    Expanded(child: Center(child: Text('SAT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0x990066FF))))),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                GridView.builder(
+                  itemCount: days.length,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, mainAxisSpacing: rowGap, crossAxisSpacing: 4, mainAxisExtent: cellHeight),
+                  itemBuilder: (context, index) {
+                    final day = days[index];
+                    final selectedDay = day.year == selected.year && day.month == selected.month && day.day == selected.day;
+                    final inMonth = day.month == displayMonth.month;
+                    final dayTodoCount = todos.where((t) => _sameDay(day, t['due_date'] as String?)).length;
+                    return InkWell(
+                      onTap: () => onSelectDay(day),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: barWidth,
+                        alignment: Alignment.topCenter,
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: selectedDay ? const Color(0xFF0050CB) : Colors.transparent,
+                                    shape: BoxShape.circle,
+                                    boxShadow: selectedDay ? const [BoxShadow(color: Color(0x330050CB), blurRadius: 18)] : null,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${day.day}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: selectedDay ? Colors.white : (inMonth ? AppColors.lightText : AppColors.lightMuted.withValues(alpha: 0.3)),
+                                    ),
+                                  ),
+                                ),
+                                if (dayTodoCount > 0) ...[
+                                  const SizedBox(width: 3),
+                                  Container(
+                                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: selectedDay ? Colors.white : const Color(0xFF006689),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      '$dayTodoCount',
+                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: selectedDay ? const Color(0xFF006689) : Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            ...overlays,
+          ],
+        );
+      },
     );
   }
 }

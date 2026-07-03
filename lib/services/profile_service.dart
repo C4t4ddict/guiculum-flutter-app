@@ -69,6 +69,7 @@ class ProfileExtraDto {
 class ProfileService {
   static SupabaseClient get _client => Supabase.instance.client;
   static const _extraPrefix = 'profile_extra_';
+  static const _demoProfilePrefix = 'demo_profile_';
 
   static Future<void> upsertMyProfileIfNeeded() async {
     final user = _client.auth.currentUser;
@@ -90,6 +91,18 @@ class ProfileService {
     final trimmed = nickname.trim();
     if (trimmed.isEmpty) {
       throw Exception('닉네임은 비어 있을 수 없습니다.');
+    }
+
+    final email = user.email ?? '-';
+    if (email.endsWith('@study-pilot.local')) {
+      await _ensureDemoProfileIfNeeded(user.id, email);
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_demoProfilePrefix${user.id}';
+      final raw = prefs.getString(key);
+      final data = jsonDecode(raw!) as Map<String, dynamic>;
+      data['nickname'] = trimmed;
+      await prefs.setString(key, jsonEncode(data));
+      return;
     }
 
     await _client.from('profiles').update({'nickname': trimmed}).eq('id', user.id);
@@ -114,6 +127,33 @@ class ProfileService {
     await prefs.setString('$_extraPrefix${user.id}', jsonEncode(payload.toJson()));
   }
 
+  static Future<void> _ensureDemoProfileIfNeeded(String userId, String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_demoProfilePrefix$userId';
+    if (prefs.getString(key) == null) {
+      await prefs.setString(
+        key,
+        jsonEncode({
+          'id': userId,
+          'email': email,
+          'nickname': '줄리안 캡틴',
+          'created_at': DateTime(2026, 7, 1).toIso8601String(),
+        }),
+      );
+    }
+    final extraKey = '$_extraPrefix$userId';
+    if (prefs.getString(extraKey) == null) {
+      await prefs.setString(
+        extraKey,
+        jsonEncode(const ProfileExtraDto(
+          jobGoal: '시니어 풀스택 개발자',
+          studyStyle: '오늘도 목표 고도까지 흔들림 없이 학습하겠습니다. 완벽한 코드와 효율적인 아키텍처를 향해!',
+          interests: ['Flutter', '아키텍처', 'UI 시스템'],
+        ).toJson()),
+      );
+    }
+  }
+
   static Future<ProfileExtraDto> _fetchProfileExtras(String userId) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('$_extraPrefix$userId');
@@ -127,6 +167,25 @@ class ProfileService {
     final user = _client.auth.currentUser;
     if (user == null) return null;
 
+    final email = user.email ?? '-';
+    final isDemoUser = email.endsWith('@study-pilot.local');
+    if (isDemoUser) {
+      await _ensureDemoProfileIfNeeded(user.id, email);
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_demoProfilePrefix${user.id}');
+      final data = jsonDecode(raw!) as Map<String, dynamic>;
+      final extra = await _fetchProfileExtras(user.id);
+      return ProfileDto(
+        id: data['id'] as String,
+        email: data['email'] as String,
+        nickname: data['nickname'] as String,
+        createdAt: data['created_at'] as String,
+        jobGoal: extra.jobGoal,
+        studyStyle: extra.studyStyle,
+        interests: extra.interests,
+      );
+    }
+
     final data = await _client
         .from('profiles')
         .select('id,email,nickname,created_at')
@@ -138,7 +197,7 @@ class ProfileService {
 
     return ProfileDto(
       id: data['id'] as String,
-      email: (data['email'] as String?) ?? user.email ?? '-',
+      email: (data['email'] as String?) ?? email,
       nickname: (data['nickname'] as String?) ?? 'anonymous',
       createdAt: (data['created_at'] as String?) ?? '-',
       jobGoal: extra.jobGoal,

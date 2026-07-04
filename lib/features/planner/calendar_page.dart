@@ -342,7 +342,7 @@ class _CalendarGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     const cellHeight = 58.0;
     const rowGap = 10.0;
-    const labelHeight = 16.0;
+    const lineHeight = 8.0;
     return LayoutBuilder(
       builder: (context, constraints) {
         final cellWidth = (constraints.maxWidth - 24) / 7;
@@ -378,22 +378,37 @@ class _CalendarGrid extends StatelessWidget {
               top: top,
               width: width,
               child: Container(
-                height: labelHeight,
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                height: lineHeight,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.16),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: color.withValues(alpha: 0.26)),
-                ),
-                child: Text(
-                  startCol == current % 7 ? segmentLabel((segment['name'] ?? '-').toString()) : '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color),
+                  border: Border.all(color: color.withValues(alpha: 0.28)),
                 ),
               ),
             ));
+            if (current == startIndex) {
+              overlays.add(Positioned(
+                left: left,
+                top: top - 18,
+                width: width.clamp(44.0, 96.0),
+                child: Container(
+                  height: 18,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    segmentLabel((segment['name'] ?? '-').toString()),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color),
+                  ),
+                ),
+              ));
+            }
             current = segmentEnd + 1;
           }
         }

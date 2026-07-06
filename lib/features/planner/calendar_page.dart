@@ -320,6 +320,25 @@ class _PlannerCalendarPageState extends State<PlannerCalendarPage> {
   }
 }
 
+
+class _SegmentRenderSlice {
+  final double left;
+  final double top;
+  final double width;
+  final Color color;
+  final String? labelText;
+  final double labelWidth;
+
+  const _SegmentRenderSlice({
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.color,
+    required this.labelText,
+    required this.labelWidth,
+  });
+}
+
 class _CalendarGrid extends StatelessWidget {
   final List<DateTime> days;
   final DateTime selected;
@@ -338,6 +357,55 @@ class _CalendarGrid extends StatelessWidget {
     return day.year == d.year && day.month == d.month && day.day == d.day;
   }
 
+  List<_SegmentRenderSlice> _buildSegmentRenderSlices({
+    required List<Map<String, dynamic>> segments,
+    required double cellWidth,
+    required double cellHeight,
+    required double rowGap,
+    required double lineHeight,
+  }) {
+    final slices = <_SegmentRenderSlice>[];
+    for (final segment in segments) {
+      final color = Color(int.parse((segment['color'] ?? PlannerService.segmentPalette.first).toString()));
+      final start = DateTime.tryParse((segment['start_date'] ?? '').toString());
+      final end = DateTime.tryParse((segment['end_date'] ?? '').toString());
+      if (start == null || end == null) continue;
+
+      int? startIndex;
+      int? endIndex;
+      for (var i = 0; i < days.length; i++) {
+        if (days[i].year == start.year && days[i].month == start.month && days[i].day == start.day) startIndex = i;
+        if (days[i].year == end.year && days[i].month == end.month && days[i].day == end.day) endIndex = i;
+      }
+      if (startIndex == null || endIndex == null) continue;
+
+      var current = startIndex;
+      while (current <= endIndex) {
+        final row = current ~/ 7;
+        final rowEnd = (row * 7) + 6;
+        final segmentEnd = endIndex < rowEnd ? endIndex : rowEnd;
+        final startCol = current % 7;
+        final endCol = segmentEnd % 7;
+        final left = startCol * (cellWidth + 4) + 3;
+        final width = ((endCol - startCol) + 1) * cellWidth + ((endCol - startCol) * 4) - 6;
+        final top = row * (cellHeight + rowGap) + 42;
+        final remainingRowWidth = ((6 - startCol) + 1) * cellWidth + ((6 - startCol) * 4) - 6;
+        final labelWidth = remainingRowWidth.clamp(0.0, 96.0);
+        final showLabel = current == startIndex && labelWidth >= 46;
+        slices.add(_SegmentRenderSlice(
+          left: left,
+          top: top,
+          width: width,
+          color: color,
+          labelText: showLabel ? segmentLabel((segment['name'] ?? '-').toString()) : null,
+          labelWidth: labelWidth,
+        ));
+        current = segmentEnd + 1;
+      }
+    }
+    return slices;
+  }
+
   @override
   Widget build(BuildContext context) {
     const cellHeight = 58.0;
@@ -347,71 +415,7 @@ class _CalendarGrid extends StatelessWidget {
       builder: (context, constraints) {
         final cellWidth = (constraints.maxWidth - 24) / 7;
         final segments = curriculum == null ? const <Map<String, dynamic>>[] : PlannerService.buildCurriculumSegments(curriculum!);
-        final overlays = <Widget>[];
-
-        for (final segment in segments) {
-          final color = Color(int.parse((segment['color'] ?? PlannerService.segmentPalette.first).toString()));
-          final start = DateTime.tryParse((segment['start_date'] ?? '').toString());
-          final end = DateTime.tryParse((segment['end_date'] ?? '').toString());
-          if (start == null || end == null) continue;
-
-          int? startIndex;
-          int? endIndex;
-          for (var i = 0; i < days.length; i++) {
-            if (days[i].year == start.year && days[i].month == start.month && days[i].day == start.day) startIndex = i;
-            if (days[i].year == end.year && days[i].month == end.month && days[i].day == end.day) endIndex = i;
-          }
-          if (startIndex == null || endIndex == null) continue;
-
-          var current = startIndex;
-          while (current <= endIndex) {
-            final row = current ~/ 7;
-            final rowEnd = (row * 7) + 6;
-            final segmentEnd = endIndex < rowEnd ? endIndex : rowEnd;
-            final startCol = current % 7;
-            final endCol = segmentEnd % 7;
-            final left = startCol * (cellWidth + 4) + 3;
-            final width = ((endCol - startCol) + 1) * cellWidth + ((endCol - startCol) * 4) - 6;
-            final top = row * (cellHeight + rowGap) + 42;
-            overlays.add(Positioned(
-              left: left,
-              top: top,
-              width: width,
-              child: Container(
-                height: lineHeight,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: color.withValues(alpha: 0.28)),
-                ),
-              ),
-            ));
-            if (current == startIndex) {
-              overlays.add(Positioned(
-                left: left,
-                top: top - 18,
-                width: width.clamp(44.0, 96.0),
-                child: Container(
-                  height: 18,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: color.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    segmentLabel((segment['name'] ?? '-').toString()),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: color),
-                  ),
-                ),
-              ));
-            }
-            current = segmentEnd + 1;
-          }
-        }
+        final renderSlices = _buildSegmentRenderSlices(segments: segments, cellWidth: cellWidth, cellHeight: cellHeight, rowGap: rowGap, lineHeight: lineHeight);
 
         return Stack(
           children: [
@@ -493,7 +497,7 @@ class _CalendarGrid extends StatelessWidget {
                 ),
               ],
             ),
-            ...overlays,
+            ...renderSlices.map((slice) => Positioned(left: slice.left, top: slice.top, width: slice.width, child: _SegmentLineSlice(slice: slice))),
           ],
         );
       },
@@ -727,6 +731,51 @@ class _DayDetailSheet extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+
+class _SegmentLineSlice extends StatelessWidget {
+  final _SegmentRenderSlice slice;
+  const _SegmentLineSlice({required this.slice});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 8,
+          decoration: BoxDecoration(
+            color: slice.color.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: slice.color.withValues(alpha: 0.28)),
+          ),
+        ),
+        if (slice.labelText != null)
+          Positioned(
+            left: 0,
+            top: -18,
+            width: slice.labelWidth,
+            child: Container(
+              height: 18,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: slice.color.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: slice.color.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                slice.labelText!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: slice.color),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

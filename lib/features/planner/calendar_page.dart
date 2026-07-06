@@ -386,12 +386,12 @@ class _CalendarGrid extends StatelessWidget {
         final segmentEnd = endIndex < rowEnd ? endIndex : rowEnd;
         final startCol = current % 7;
         final endCol = segmentEnd % 7;
-        final left = startCol * (cellWidth + 4) + 3;
-        final width = ((endCol - startCol) + 1) * cellWidth + ((endCol - startCol) * 4) - 6;
-        final top = row * (cellHeight + rowGap) + 42;
-        final remainingRowWidth = ((6 - startCol) + 1) * cellWidth + ((6 - startCol) * 4) - 6;
-        final labelWidth = remainingRowWidth.clamp(0.0, 96.0);
-        final showLabel = current == startIndex && labelWidth >= 46;
+        final left = startCol * (cellWidth + 4) + 6;
+        final width = ((endCol - startCol) + 1) * cellWidth + ((endCol - startCol) * 4) - 12;
+        final top = row * (cellHeight + rowGap) + 34;
+        final remainingRowWidth = ((6 - startCol) + 1) * cellWidth + ((6 - startCol) * 4) - 12;
+        final labelWidth = remainingRowWidth.clamp(0.0, 88.0);
+        final showLabel = current == startIndex && labelWidth >= 56;
         slices.add(_SegmentRenderSlice(
           left: left,
           top: top,
@@ -454,8 +454,8 @@ class _CalendarGrid extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Container(
-                                  width: 30,
-                                  height: 30,
+                                  width: 28,
+                                  height: 28,
                                   decoration: BoxDecoration(
                                     color: selectedDay ? const Color(0xFF0050CB) : Colors.transparent,
                                     shape: BoxShape.circle,
@@ -465,17 +465,17 @@ class _CalendarGrid extends StatelessWidget {
                                   child: Text(
                                     '${day.day}',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                       color: selectedDay ? Colors.white : (inMonth ? AppColors.lightText : AppColors.lightMuted.withValues(alpha: 0.3)),
                                     ),
                                   ),
                                 ),
                                 if (dayTodoCount > 0) ...[
-                                  const SizedBox(width: 3),
+                                  const SizedBox(width: 2),
                                   Container(
-                                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                                     alignment: Alignment.center,
                                     decoration: BoxDecoration(
                                       color: selectedDay ? Colors.white : const Color(0xFF006689),
@@ -483,7 +483,7 @@ class _CalendarGrid extends StatelessWidget {
                                     ),
                                     child: Text(
                                       '$dayTodoCount',
-                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: selectedDay ? const Color(0xFF006689) : Colors.white),
+                                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: selectedDay ? const Color(0xFF006689) : Colors.white),
                                     ),
                                   ),
                                 ],

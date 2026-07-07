@@ -328,6 +328,8 @@ class _SegmentRenderSlice {
   final Color color;
   final String? labelText;
   final double labelWidth;
+  final bool isStart;
+  final bool isEnd;
 
   const _SegmentRenderSlice({
     required this.left,
@@ -336,6 +338,8 @@ class _SegmentRenderSlice {
     required this.color,
     required this.labelText,
     required this.labelWidth,
+    required this.isStart,
+    required this.isEnd,
   });
 }
 
@@ -399,6 +403,8 @@ class _CalendarGrid extends StatelessWidget {
           color: color,
           labelText: showLabel ? segmentLabel((segment['name'] ?? '-').toString()) : null,
           labelWidth: labelWidth,
+          isStart: current == startIndex,
+          isEnd: segmentEnd == endIndex,
         ));
         current = segmentEnd + 1;
       }
@@ -749,8 +755,13 @@ class _SegmentLineSlice extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(
             color: slice.color.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(999),
             border: Border.all(color: slice.color.withValues(alpha: 0.28)),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(slice.isStart ? 999 : 4),
+              bottomLeft: Radius.circular(slice.isStart ? 999 : 4),
+              topRight: Radius.circular(slice.isEnd ? 999 : 4),
+              bottomRight: Radius.circular(slice.isEnd ? 999 : 4),
+            ),
           ),
         ),
         if (slice.labelText != null)
